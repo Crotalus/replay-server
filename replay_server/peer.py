@@ -1,5 +1,9 @@
+import asyncio
 import logging
 import os
+import zlib
+import base64
+import json
 import config
 
 log = logging.getLogger(__name__)
@@ -25,15 +29,14 @@ class ReplayPeer:
 class ReplayFilePeer:
     def __init__(self, game_id):
         self.game_id = game_id
-        self.file = None
+        self.file = open(self.sc_path, 'wb')
         self.sent_step = -1  # Last step sent, -1 due to header
-        self.open_file()
 
     def __str__(self):
         return 'Peer( %s )' % self.file.name
 
     @property
-    def filepath(self):
+    def dirpath(self):
         # copypasted this mess from old replay server
         path = config.REPLAY_FOLDER
         dirsize = 100
@@ -47,15 +50,32 @@ class ReplayFilePeer:
         if not os.path.exists(dirname):
             os.makedirs(dirname)
 
-        return os.path.join(dirname, '%d.scfareplay' % self.game_id)
+        return dirname
 
-    def open_file(self):
-        self.file = open(self.filepath, 'wb')
+    @property
+    def sc_path(self):
+        return os.path.join(self.dirpath, '%d.scfareplay' % self.game_id)
+
+    @property
+    def faf_path(self):
+        return os.path.join(self.dirpath, '%d.fafreplay' % self.game_id)
 
     def send(self, step_data):
         self.file.write(step_data)
         self.sent_step += 1
 
     def finish(self):
-        # TODO: Notify hook for a finished replay.
         self.file.close()
+        loop = asyncio.get_event_loop()
+        asyncio.ensure_future(self.create_fafreplay(), loop=loop)
+
+    async def create_fafreplay(self):
+        info = await self.get_gameinfo()
+
+        with open(self.sc_path, 'rb') as sc_replay, open(self.faf_path, 'wb') as faf_replay:
+            replaydata = sc_replay.read()
+            faf_replay.write((json.dumps(info, ensure_ascii=False) + "\n").encode('utf-8'))
+            faf_replay.write(zlib.compress(replaydata))
+
+    async def get_gameinfo(self):
+        return dict(info='here')

@@ -74,7 +74,6 @@ class ReplayStream:
                     to_peer.send(step.to_bytes())
 
                 if self.game_ended:
-                    log.debug("Game ended, asking peer %s to finish!", to_peer)
                     to_peer.finish()
                     break
 
