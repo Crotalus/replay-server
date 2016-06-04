@@ -34,7 +34,7 @@ class Client:
         return data
 
     def write(self, data):
-        pass
+        self.writer.write(data)
 
     def close(self):
         self.writer.close()

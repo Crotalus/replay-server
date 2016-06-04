@@ -13,12 +13,11 @@ class ReplayPeer:
         return 'Peer%s' % (self.address,)
 
     def send(self, step_data):
-        self.socket.send(step_data)
+        self.client.write(step_data)
         self.sent_step += 1
 
     def finish(self):
-        "Called to say EOS"
-        pass
+        self.client.writer.write_eof()
 
 
 class ReplayFilePeer:
