@@ -1,77 +1,76 @@
 """
 GPG Replay Header parsing
 """
-
 from struct import unpack
-
 from .data import attrdict
 
-def readNulString(stream):
-    byte = stream.readUInt8()
+async def readNulString(stream):
+    byte = await stream.readUInt8()
     buf = bytes()
     while byte != 0:
         buf += bytes([byte])
-        byte = stream.readUInt8()
+        byte = await stream.readUInt8()
     return buf.decode()
 
-def parseLua(ds):
-    ty = ds.readUInt8()
+async def parseLua(ds):
+    ty = await ds.readUInt8()
     if ty == 0: # num
-        return ds.readFloat()
+        return await ds.readFloat()
     elif ty == 1: # str
-        return readNulString(ds)
+        return await readNulString(ds)
     elif ty == 2: # nil
-        ds.readUInt8()
+        await ds.readUInt8()
         return None
     elif ty == 3: # bool
-        return ds.readUInt8() != 0
+        return await ds.readUInt8() != 0
     elif ty == 4: # table
 
         table = {}
 
-        while ds.peek(1) != b'\x05': # 5 means table stream finished
-            key = parseLua(ds)
-            val = parseLua(ds)
+        while await ds.peek(1) != b'\x05': # 5 means table stream finished
+            key = await parseLua(ds)
+            val = await parseLua(ds)
             table[key] = val
 
-        ds.readUInt8() # 0x5
+        await ds.readUInt8() # 0x5
         return table
     else:
         raise RuntimeError("Unknown lua type id: %d" % ty)
 
-def parseHeader(ds):
+async def parseHeader(ds):
     result = attrdict()
-    result.ver = readNulString(ds)
-    unknown = readNulString(ds)
-    result.map = readNulString(ds).splitlines()[1]
-    unknown2 = readNulString(ds)
+    result.ver = await readNulString(ds)
+    unknown = await readNulString(ds)
+    result.map = (await readNulString(ds)).splitlines()[1]
+    unknown2 = await readNulString(ds)
 
-    mods_size = ds.readUInt32()
-    result.mods = parseLua(ds)
+    mods_size = await ds.readUInt32()
+    result.mods = await parseLua(ds)
 
-    scenario_size = ds.readUInt32()
-    result.scenario = parseLua(ds)
+    scenario_size = await ds.readUInt32()
+    result.scenario = await parseLua(ds)
 
-    n_sources = ds.readUInt8()
+    n_sources = await ds.readUInt8()
     timeouts_rem = {}
+
     for i in range(n_sources):
-        name = readNulString(ds)
-        num = ds.readUInt32()
+        name = await readNulString(ds)
+        num = await ds.readUInt32()
 
         timeouts_rem[name] = num
 
     result.timeouts_remaining = timeouts_rem
-    result.cheats = ds.readUInt8() != 0
+    result.cheats = await ds.readUInt8() != 0
 
-    n_armies = ds.readUInt8()
+    n_armies = await ds.readUInt8()
 
     cmd_sources = []
 
     armies = []
     for i in range(n_armies):
-        data_size = ds.readUInt32()
-        data = parseLua(ds)
-        source_id = ds.readUInt8()
+        data_size = await ds.readUInt32()
+        data = await parseLua(ds)
+        source_id = await ds.readUInt8()
 
         data = dict(data)
         data.update({'source_id': source_id})
@@ -79,12 +78,12 @@ def parseHeader(ds):
         cmd_sources.append(data)
         armies.append(data)
 
-        if ds.peek(1) == b'\xff':
+        if await ds.peek(1) == b'\xff':
             # not sure what the hell
-            ds.read(1)
+            await ds.read(1)
 
     result.armies = armies
-    result.random = ds.readUInt32()
+    result.random = await ds.readUInt32()
 
     return result
 
@@ -97,40 +96,40 @@ class DataStream:
         # Collects all data read
         self._data = b''
 
-    def peek(self, n):
+    async def peek(self, n):
         if len(self.peeked) < n:
-            self.peeked += self.read(n - len(self.peeked))
+            self.peeked += await self.read(n - len(self.peeked))
 
         return self.peeked[:n]
 
-    def _read(self, n):
-        ret = self.file.read(n)
+    async def _read(self, n):
+        ret = await self.file.read(n)
         self._data += ret
         if len(ret) != n:
-            print('Failed to read %d, got: %s' % (n, ret))
-            print(self.file.read(1))
+            log.info('Failed to read %d, got: %s' % (n, ret))
+            log.info(self.file.read(1))
         return ret
 
-    def read(self, n):
+    async def read(self, n):
         if len(self.peeked) > 0:
             if len(self.peeked) >= n:
                 ret = self.peeked[:n]
                 self.peeked = self.peeked[n:]
             else:
-                ret = self.peeked + self._read(n - len(self.peeked))
+                ret = self.peeked + await self._read(n - len(self.peeked))
                 self.peeked = b''
             return ret
         else:
-            return self._read(n)
+            return await self._read(n)
 
-    def readUInt8(self):
-        return unpack('B', self.read(1))[0]
+    async def readUInt8(self):
+        return unpack('B', await self.read(1))[0]
 
-    def readUInt32(self):
-        return unpack('<L', self.read(4))[0]
+    async def readUInt32(self):
+        return unpack('<L', await self.read(4))[0]
 
-    def readFloat(self):
-        return unpack('<f', self.read(4))[0]
+    async def readFloat(self):
+        return unpack('<f', await self.read(4))[0]
 
     def data(self):
         return self._data

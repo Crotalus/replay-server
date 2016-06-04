@@ -1,6 +1,6 @@
 
 # Replay streaming delay in steps (0.1 seconds)
-LIVE_DELAY = 600
+LIVE_DELAY = 3000
 
 # Database config
 DATABASE = dict(
@@ -10,7 +10,8 @@ DATABASE = dict(
 )
 
 # Address to bind to
-LISTEN_ADDRESS = ('', 15000)
+LISTEN_ADDRESS = ''
+LISTEN_PORT = 15000
 
 # Folder to store replays in
 REPLAY_FOLDER = 'replays/'

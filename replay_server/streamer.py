@@ -8,16 +8,14 @@ log = logging.getLogger(__name__)
 
 
 class ReplayStreamer:
-    def __init__(self, stream, streamer_socket, replay_name, game_id):
+    def __init__(self, stream, client, replay_name, game_id):
         self.game_id = game_id
         self.name = replay_name[replay_name.find('/', 1)+1:]
 
         self.stream = stream
 
-        self.socket = streamer_socket
-        self.address = self.socket.getpeername()
-
-        self._file = self.socket.makefile('rb')
+        self.client = client
+        self.address = self.client.address
 
         self.step_buffer = [] # Buffers a step
 
@@ -54,37 +52,40 @@ class ReplayStreamer:
 
         self.stream.push_step(self, step)
 
-        if self.step % 100 == 0:
-            log.debug('%s: current step = %d', self, self.step)
+        if self.step % 600 == 0:
+            log.debug('%s:\ncurrent step = %d', self, self.step)
 
-    def _read(self, nbytes):
-        ret = self._file.read(nbytes)
+    async def _read(self, nbytes):
+        ret = await self.client.reader.read(nbytes)
         if len(ret) == 0:
             # Socket closed
             raise OSError()
         return ret
 
-    def read_header(self):
-        ds = DataStream(self._file)
-        self.header = parseHeader(ds)
+    async def read_header(self):
+        ds = DataStream(self.client.reader)
+        self.header = await parseHeader(ds)
         self.header_data = ds.data()
 
-    def read_operation(self):
-        op, op_len = unpack('<BH', self._read(3))
+    async def read_operation(self):
+        data = await self._read(3)
+        op, op_len = unpack('<BH', data)
 
-        data = self._read(op_len - 3)
+        if op_len > 3:
+            data = await self._read(op_len - 3)
+        else:
+            data = b''
 
         return CMDST_Operation(op, data)
 
-    def read_stream(self):
+    async def read_stream(self):
         self.stream.add_streamer(self)
         try:
-            self.read_header()
+            await self.read_header()
             self.stream.push_header(self.header, self.header_data)
 
             while 1:
-                op = self.read_operation()
-
+                op = await self.read_operation()
                 self.step_buffer.append(op)
 
                 if op.op in [CMDST.Advance, CMDST.SingleStep]:

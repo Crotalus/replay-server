@@ -5,6 +5,11 @@ Functions and classes related to replay structure
 from struct import pack
 from time import time
 
+import logging
+
+log = logging.getLogger(__name__)
+
+
 class attrdict(dict):
     def __init__(self, *args, **kwargs):
         super(attrdict, self).__init__(*args, **kwargs)
@@ -74,7 +79,7 @@ class CMDST_Operation:
             and self.op == other.op and self.data == other.data
 
     def __str__(self):
-        return '%s ( %s )' % (ECmdStreamOp_R[self.op], self.data)
+        return '{0} ( {1} )'.format(ECmdStreamOp_R[self.op], self.data)
 
     def __bytes__(self):
         return pack('<BH', self.op, len(self.data)+3)+self.data
@@ -94,12 +99,12 @@ class ReplayStep:
 
     def debug_cmp(self, other):
         if self.tick != other.tick:
-            print('ReplayStep.eq - Tick mismatch: %d != %d' %
+            log.debug('ReplayStep.eq - Tick mismatch: %d != %d' %
                   (self.tick, other.tick))
             return False
 
         if self.operations != other.operations:
-            print("ReplayStep.eq - Operations don't match:")
+            log.debug("ReplayStep.eq - Operations don't match:")
             for i in range(max(len(self.operations), len(other.operations))):
                 try:
                     op_a = self.operations[i]

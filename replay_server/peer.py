@@ -1,10 +1,9 @@
-
 class ReplayPeer:
-    def __init__(self, socket):
-        self.socket = socket
-        self.address = self.socket.getpeername()
+    def __init__(self, client):
+        self.client = client
+        self.address = self.client.address
 
-        self.sent_step = 0 # Last step sent
+        self.sent_step = 0  # Last step sent
 
     def __str__(self):
         return 'Peer%s' % (self.address,)
@@ -17,11 +16,12 @@ class ReplayPeer:
         "Called to say EOS"
         pass
 
+
 class ReplayFilePeer:
     def __init__(self, file):
         self.file = file
 
-        self.sent_step = 0 # Last step sent
+        self.sent_step = 0  # Last step sent
 
     def __str__(self):
         return 'Peer( %s )' % self.file.name
