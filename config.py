@@ -14,4 +14,4 @@ LISTEN_ADDRESS = ''
 LISTEN_PORT = 15000
 
 # Folder to store replays in
-REPLAY_FOLDER = 'replays/'
+REPLAY_FOLDER = "vault/replay_vault/"

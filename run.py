@@ -32,7 +32,7 @@ server = ReplayServer(config.LISTEN_ADDRESS, config.LISTEN_PORT)
 
 if not os.path.exists(config.REPLAY_FOLDER):
     log.info('Creating replay folder "%s"', config.REPLAY_FOLDER)
-    os.mkdir(config.REPLAY_FOLDER)
+    os.makedirs(config.REPLAY_FOLDER)
 
 log.info('Starting...')
 server.run(loop)
