@@ -126,3 +126,6 @@ class ReplayStep:
     def to_bytes(self):
         "Get data blob"
         return b''.join([bytes(x) for x in self.operations])
+
+    def __str__(self):
+        return ''.join([str(o) for o in self.operations])
