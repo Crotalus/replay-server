@@ -1,9 +1,13 @@
+import logging
+
+log = logging.getLogger(__name__)
+
 class ReplayPeer:
     def __init__(self, client):
         self.client = client
         self.address = self.client.address
 
-        self.sent_step = 0  # Last step sent
+        self.sent_step = -1  # Last step sent, -1 due to header
 
     def __str__(self):
         return 'Peer%s' % (self.address,)
@@ -21,7 +25,7 @@ class ReplayFilePeer:
     def __init__(self, file):
         self.file = file
 
-        self.sent_step = 0  # Last step sent
+        self.sent_step = -1  # Last step sent, -1 due to header
 
     def __str__(self):
         return 'Peer( %s )' % self.file.name
