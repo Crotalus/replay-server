@@ -5,6 +5,7 @@ import zlib
 import base64
 import json
 import config
+import db
 
 log = logging.getLogger(__name__)
 
@@ -78,4 +79,9 @@ class ReplayFilePeer:
             faf_replay.write(zlib.compress(replaydata))
 
     async def get_gameinfo(self):
+        pool = await db.get_pool()
+        async with pool.get() as conn:
+            cursor = await conn.cursor()
+            await cursor.execute("INSERT INTO game_replays (uid) VALUES (%s)", self.game_id)
+
         return dict(info='here')

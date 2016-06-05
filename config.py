@@ -4,9 +4,11 @@ LIVE_DELAY = 3000
 
 # Database config
 DATABASE = dict(
-    name=    "bob_schema",
-    user=    "bob",
-    passwd=  "the_dinosaur"
+    db="faf_test",
+    host="192.168.10.148",
+    port=3306,
+    user="root",
+    password="banana"
 )
 
 # Address to bind to
