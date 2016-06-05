@@ -15,5 +15,9 @@ DATABASE = dict(
 LISTEN_ADDRESS = ''
 LISTEN_PORT = 15000
 
-# Folder to store replays in
+# Root folder to store replays
 REPLAY_FOLDER = "vault/replay_vault/"
+# Live games streams into files here
+STREAMING_FOLDER = REPLAY_FOLDER + "streaming/"
+# Contains processed replays which didn't get into database for some reason
+PENDING_FOLDER = REPLAY_FOLDER + "pending/"

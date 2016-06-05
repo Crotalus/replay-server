@@ -30,9 +30,10 @@ loop = asyncio.get_event_loop()
 
 server = ReplayServer(config.LISTEN_ADDRESS, config.LISTEN_PORT)
 
-if not os.path.exists(config.REPLAY_FOLDER):
-    log.info('Creating replay folder "%s"', config.REPLAY_FOLDER)
-    os.makedirs(config.REPLAY_FOLDER)
+for f in [config.REPLAY_FOLDER, config.STREAMING_FOLDER, config.PENDING_FOLDER]:
+    if not os.path.exists(f):
+        log.info('Creating folder "%s"', f)
+        os.makedirs(f)
 
 log.info('Starting...')
 server.run(loop)
