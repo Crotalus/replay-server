@@ -83,10 +83,10 @@ class ReplayFilePeer:
             faf_replay.write(zlib.compress(replaydata))
 
     async def get_gameinfo(self):
-        info = dict(desynced=self.stream.desynced, featured_mod='faf', uid=self.game_id)
+        info = dict(desynced=self.stream.desynced, featured_mod='faf', ticks=self.stream.step, uid=self.game_id)
         pool = await db.get_pool()
         async with pool.get() as conn:
             cursor = await conn.cursor()
-            await cursor.execute("INSERT INTO game_replays (uid, desynced) VALUES (%s, %s)", (info['uid'], info['desynced']))
+            await cursor.execute("INSERT INTO game_replays (uid, ticks, desynced) VALUES ('%s', '%s', '%s')", (info['uid'], info['ticks'], info['desynced']))
 
         return info
