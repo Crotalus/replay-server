@@ -111,6 +111,8 @@ class ReplayFilePeer:
             p_file.write((json.dumps(info, ensure_ascii=False) + "\n").encode('utf-8'))
             p_file.write(zlib.compress(replaydata))
 
+        os.remove(self.streaming_path)
+
         await self.insert_replay()
 
         os.rename(self.pending_path, self.final_path)
