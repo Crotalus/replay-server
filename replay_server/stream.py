@@ -37,6 +37,7 @@ class ReplayStream:
         self.step = 0  # Beat id
 
         self.game_ended = False
+        self.desynced = False
 
         self.streamers = set()
         self.peers = set()
@@ -100,6 +101,7 @@ class ReplayStream:
         else:
             #header['random'] = self.header['random']  # XXX: for restart debugging
             #log.debug("self.header:\n{0}\nheader:\n{1}\n".format(self.header, header))
+            self.desynced = True
             STAssert(str(header) == str(self.header), 'Header difference.')
 
 
@@ -115,6 +117,8 @@ class ReplayStream:
             if cur_step != step:
                 log.debug("From:%s and %s", cur_step._debug_streamer, streamer)
                 cur_step.debug_cmp(step)
+
+            self.desynced = True
             STAssert(self.steps[step.tick-1] == step, 'Step difference.')
         else:
             step._debug_streamer = str(streamer)

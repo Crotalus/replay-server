@@ -72,7 +72,7 @@ class ReplayServer:
             stream = ReplayStream(game_id)
             self.replay_streams[game_id] = stream
 
-            file_peer = ReplayFilePeer(game_id)
+            file_peer = ReplayFilePeer(stream)
             asyncio.ensure_future(stream.stream_steps(file_peer))
 
         return stream

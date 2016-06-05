@@ -28,13 +28,17 @@ class ReplayPeer:
 
 
 class ReplayFilePeer:
-    def __init__(self, game_id):
-        self.game_id = game_id
+    def __init__(self, stream):
+        self.stream = stream
         self.file = open(self.sc_path, 'wb')
         self.sent_step = -1  # Last step sent, -1 due to header
 
     def __str__(self):
         return 'Peer( %s )' % self.file.name
+
+    @property
+    def game_id(self):
+        return self.stream.game_id
 
     @property
     def dirpath(self):
@@ -79,9 +83,10 @@ class ReplayFilePeer:
             faf_replay.write(zlib.compress(replaydata))
 
     async def get_gameinfo(self):
+        info = dict(desynced=self.stream.desynced, featured_mod='faf', uid=self.game_id)
         pool = await db.get_pool()
         async with pool.get() as conn:
             cursor = await conn.cursor()
-            await cursor.execute("INSERT INTO game_replays (uid) VALUES (%s)", self.game_id)
+            await cursor.execute("INSERT INTO game_replays (uid, desynced) VALUES (%s, %s)", (info['uid'], info['desynced']))
 
-        return dict(info='here')
+        return info
