@@ -26,8 +26,6 @@ class ReplayStreamer:
 
         self.step = 0 # Beat id
 
-        self.game_ended = False
-
     @property
     def map(self):
         return self.header.map
@@ -79,25 +77,16 @@ class ReplayStreamer:
         return CMDST_Operation(op, data)
 
     async def read_stream(self):
-        self.stream.add_streamer(self)
-        try:
-            await self.read_header()
-            self.stream.push_header(self.header, self.header_data)
+        await self.read_header()
+        self.stream.push_header(self.header, self.header_data)
 
-            while 1:
-                op = await self.read_operation()
-                self.step_buffer.append(op)
+        while 1:
+            op = await self.read_operation()
+            self.step_buffer.append(op)
+            if op.op in [CMDST.Advance, CMDST.SingleStep]:
+                # operations that flush the steps
+                self.advance_step(1)
 
-                if op.op in [CMDST.Advance, CMDST.SingleStep]:
-                    # operations that flush the steps
-                    self.advance_step(1)
-
-                if op.op == CMDST.EndGame:
-                    self.advance_step(1)
-
-                    self.game_ended = True
-                    break
-
-            log.info('%s: stream finished.', self)
-        finally:
-            self.stream.del_streamer(self)
+            if op.op == CMDST.EndGame:
+                self.advance_step(1)
+                break

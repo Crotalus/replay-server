@@ -135,4 +135,5 @@ class ReplayStream:
 
             log.info('%s: stream finished. [%d peers]', self, len(self.peers))
 
-
+    def end(self):
+        self.game_ended = True

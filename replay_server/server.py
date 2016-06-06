@@ -45,7 +45,6 @@ class ReplayServer:
         self.port = port
         self.clients = set()
         self.replay_streams = WeakValueDictionary()
-        self.replay_streamers = set()
         self.replay_peers = set()
 
     def run(self, loop):
@@ -118,11 +117,17 @@ class ReplayServer:
 
                 streamer = ReplayStreamer(stream, client, replay_name, game_id)
 
-                with keepref(streamer, self.replay_streamers):
+                with keepref(streamer, stream.streamers):
                     try:
                         await streamer.read_stream()
                     except OSError:
                         pass # Disconnected
+
+                if len(stream.streamers) == 0:
+                    log.debug("No more streamers, ending stream")
+                    stream.end()
+
+                log.debug("Streamers left: %s", len(stream.streamers))
 
             elif gpg_head[0] == 'G': # 'G'etting
                 log.info('%s GET %s', client.address, replay_name)
