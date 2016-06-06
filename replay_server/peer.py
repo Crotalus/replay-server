@@ -61,6 +61,11 @@ class ReplayFilePeer:
     @property
     def streaming_path(self):
         return os.path.join(config.STREAMING_FOLDER, '%d.scfareplay' % self.game_id)
+
+    @property
+    def info_path(self):
+        return os.path.join(config.STREAMING_FOLDER, '%d.json' % self.game_id)
+
     @property
     def pending_path(self):
         return os.path.join(config.PENDING_FOLDER, '%d.fafreplay' % self.game_id)
@@ -77,8 +82,16 @@ class ReplayFilePeer:
         loop = asyncio.get_event_loop()
         asyncio.ensure_future(self.create_fafreplay(), loop=loop)
 
+    def get_streaminfo(self):
+        return dict(desynced=self.stream.desynced, featured_mod='faf', ticks=self.stream.step, uid=self.game_id)
+
+    def save_streaminfo(self):
+        with open(self.info_path, 'w') as file:
+            json.dump(self.get_streaminfo(), file)
+
     async def get_gameinfo(self):
-        info = dict(desynced=self.stream.desynced, featured_mod='faf', ticks=self.stream.step, uid=self.game_id)
+        info = None
+
         pool = await db.get_pool()
         async with pool.get() as conn:
             cursor = await conn.cursor(aiomysql.DictCursor)
@@ -99,22 +112,30 @@ class ReplayFilePeer:
             await cursor.execute(query, self.game_id)
             row = await cursor.fetchone()
             if row is not None:
-                info.update(row)
+                info = row
 
         return info
 
     async def create_fafreplay(self):
-        info = await self.get_gameinfo()
+        self.save_streaminfo()  # if something goes wrong, still keep a file with the json data
+        info = self.get_streaminfo()
+
+        ext_info = await self.get_gameinfo()
+        if ext_info:
+            info.update(ext_info)
 
         with open(self.streaming_path, 'rb') as s_file, open(self.pending_path, 'wb') as p_file:
             replaydata = s_file.read()
             p_file.write((json.dumps(info, ensure_ascii=False) + "\n").encode('utf-8'))
             p_file.write(zlib.compress(replaydata))
 
+        # we survived the fafreplay creation part, delete the temporary stream files
         os.remove(self.streaming_path)
+        os.remove(self.info_path)
 
         await self.insert_replay()
 
+        # use db transaction to make sure we can rollback if this rename fails for some reason?
         os.rename(self.pending_path, self.final_path)
 
     async def insert_replay(self):
