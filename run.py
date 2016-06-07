@@ -25,7 +25,11 @@ log = logging.getLogger(__name__)
 
 # ==== Initialize Server ====
 
-loop = asyncio.get_event_loop()
+if sys.platform == 'win32':
+    loop = asyncio.ProactorEventLoop()
+    asyncio.set_event_loop(loop)
+else:
+    loop = asyncio.get_event_loop()
 #loop.set_debug('enabled')
 
 server = ReplayServer(config.LISTEN_ADDRESS, config.LISTEN_PORT)
