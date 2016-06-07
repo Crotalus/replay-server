@@ -25,13 +25,7 @@ log = logging.getLogger(__name__)
 
 # ==== Initialize Server ====
 
-# Set to False for now, ProactorEventLoop and asyncio not playing well due to:
-# http://bugs.python.org/issue26819
-if sys.platform == 'win32' and False:
-    loop = asyncio.ProactorEventLoop()
-    asyncio.set_event_loop(loop)
-else:
-    loop = asyncio.get_event_loop()
+loop = asyncio.get_event_loop()
 #loop.set_debug('enabled')
 
 server = ReplayServer(config.LISTEN_ADDRESS, config.LISTEN_PORT)
@@ -43,6 +37,16 @@ for f in [config.REPLAY_FOLDER, config.STREAMING_FOLDER, config.PENDING_FOLDER]:
 
 log.info('Starting...')
 server.run(loop)
+
+if sys.platform == 'linux':
+    import signal
+    import functools
+
+    def handle_signal(sigstr):
+        server.stop()
+
+    for s in ('SIGINT', 'SIGTERM',):
+        loop.add_signal_handler(getattr(signal, s), functools.partial(handle_signal, s))
 
 try:
     loop.run_forever()
