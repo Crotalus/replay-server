@@ -4,7 +4,6 @@ import asyncio
 import zlib
 import zipfile
 import json
-import inspect
 import logging
 
 import aiomysql
@@ -129,8 +128,10 @@ class ReplayFilePeer:
             info.update(ext_info)
 
         self.save_infofile(info)
-        #self.create_zipreplay()
-        await self.create_zipreplay_async()
+        if config.ASYNC_ZIP:
+            await self.create_zipreplay_thread()
+        else:
+            self.create_zipreplay()
 
         # we survived the fafreplay creation part, delete the temporary files
         os.remove(self.streaming_path)
@@ -153,24 +154,9 @@ class ReplayFilePeer:
             z_file.write(self.info_path, os.path.basename(self.info_path))
             z_file.write(self.streaming_path, os.path.basename(self.streaming_path))
 
-    async def run_subprocess(self, code):
-        coro = asyncio.create_subprocess_exec(sys.executable, '-c', code)
-        process = await coro
-        await process.wait()
-
-        if process.returncode != 0:
-            raise Exception
-
-    async def create_zipreplay_async(self):
-        code = format("""
-                    import zipfile;
-                    with zipfile.ZipFile({0}, 'w') as z_file:
-                        z_file.write({1}, os.path.basename({1}))
-                        z_file.write({2}, os.path.basename({2}))
-               """, self.pending_path, self.info_path, self.streaming_path)
-
-        await self.run_subprocess(code)
-        return
+    async def create_zipreplay_thread(self):
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, self.create_zipreplay)
 
     async def insert_replay(self):
         pool = await db.get_pool()

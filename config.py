@@ -21,3 +21,5 @@ REPLAY_FOLDER = "vault/replay_vault/"
 STREAMING_FOLDER = REPLAY_FOLDER + "streaming/"
 # Contains processed replays which didn't get into database for some reason
 PENDING_FOLDER = REPLAY_FOLDER + "pending/"
+
+ASYNC_ZIP = True
