@@ -3,6 +3,7 @@ import aiomysql
 import logging
 import os
 import zlib
+import zipfile
 import base64
 import json
 import config
@@ -80,14 +81,14 @@ class ReplayFilePeer:
     def finish(self):
         self.file.close()
         loop = asyncio.get_event_loop()
-        asyncio.ensure_future(self.create_fafreplay(), loop=loop)
+        asyncio.ensure_future(self.persist_replay(), loop=loop)
 
     def get_streaminfo(self):
         return dict(desynced=self.stream.desynced, featured_mod='faf', ticks=self.stream.step, uid=self.game_id)
 
-    def save_streaminfo(self):
+    def save_infofile(self, info):
         with open(self.info_path, 'w') as file:
-            json.dump(self.get_streaminfo(), file)
+            json.dump(info, file)
 
     async def get_gameinfo(self):
         info = None
@@ -116,27 +117,37 @@ class ReplayFilePeer:
 
         return info
 
-    async def create_fafreplay(self):
-        self.save_streaminfo()  # if something goes wrong, still keep a file with the json data
+    async def persist_replay(self):
         info = self.get_streaminfo()
+        self.save_infofile(info)  # if something goes wrong, still keep a file with the json data
 
         ext_info = await self.get_gameinfo()
         if ext_info:
             info.update(ext_info)
 
-        with open(self.streaming_path, 'rb') as s_file, open(self.pending_path, 'wb') as p_file:
-            replaydata = s_file.read()
-            p_file.write((json.dumps(info, ensure_ascii=False) + "\n").encode('utf-8'))
-            p_file.write(zlib.compress(replaydata))
+        self.save_infofile(info)
+        self.create_zipreplay()
 
-        # we survived the fafreplay creation part, delete the temporary stream files
+        # we survived the fafreplay creation part, delete the temporary files
         os.remove(self.streaming_path)
         os.remove(self.info_path)
 
         await self.insert_replay()
 
-        # use db transaction to make sure we can rollback if this rename fails for some reason?
+        # in the future, we should use db transaction to make sure we can rollback if this rename fails for some reason
         os.rename(self.pending_path, self.final_path)
+
+    def create_fafreplay(self):
+        with open(self.info_path, 'r') as i_file, open(self.streaming_path, 'rb') as s_file, open(self.pending_path, 'wb') as p_file:
+            infodata = i_file.read()
+            replaydata = s_file.read()
+            p_file.write((infodata + "\n").encode('utf-8'))
+            p_file.write(zlib.compress(replaydata))
+
+    def create_zipreplay(self):
+        with zipfile.ZipFile(self.pending_path, 'w') as z_file:
+            z_file.write(self.info_path, os.path.basename(self.info_path))
+            z_file.write(self.streaming_path, os.path.basename(self.streaming_path))
 
     async def insert_replay(self):
         pool = await db.get_pool()
