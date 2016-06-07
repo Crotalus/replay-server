@@ -25,7 +25,9 @@ log = logging.getLogger(__name__)
 
 # ==== Initialize Server ====
 
-if sys.platform == 'win32':
+# Set to False for now, ProactorEventLoop and asyncio not playing well due to:
+# http://bugs.python.org/issue26819
+if sys.platform == 'win32' and False:
     loop = asyncio.ProactorEventLoop()
     asyncio.set_event_loop(loop)
 else:

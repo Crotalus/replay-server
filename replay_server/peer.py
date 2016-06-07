@@ -1,11 +1,14 @@
-import asyncio
-import aiomysql
-import logging
+import sys
 import os
+import asyncio
 import zlib
 import zipfile
-import base64
 import json
+import inspect
+import logging
+
+import aiomysql
+
 import config
 import db
 
@@ -97,14 +100,14 @@ class ReplayFilePeer:
         async with pool.get() as conn:
             cursor = await conn.cursor(aiomysql.DictCursor)
 
-            """
+            query = """
                 SELECT f.gamemod, gs.gameType, m.filename, gs.gameName, gps.playerId, gps.AI, gps.team
                 FROM game_stats gs LEFT JOIN game_player_stats gps ON gps.gameId = gs.id LEFT JOIN table_map m ON m.id = gs.mapId
                 LEFT JOIN game_featuredMods f ON gs.gameMod = f.id WHERE gs.id = '%s'
             """
 
             # Do we really need all these LEFT JOINs? Seems like we should try to keep table relations more sane
-            query = """
+            """
                 SELECT f.gamemod, gs.gameType, m.filename, gs.gameName, l.host, l.login, gps.playerId, gps.AI, gps.team
                 FROM game_stats gs LEFT JOIN game_player_stats gps ON gps.gameId = gs.id LEFT JOIN table_map m ON m.id = gs.mapId
                 LEFT JOIN logins l ON l.id = gps.playerid LEFT JOIN game_featuredMods f ON gs.gameMod = f.id WHERE gs.id = '%s'
@@ -126,7 +129,8 @@ class ReplayFilePeer:
             info.update(ext_info)
 
         self.save_infofile(info)
-        self.create_zipreplay()
+        #self.create_zipreplay()
+        await self.create_zipreplay_async()
 
         # we survived the fafreplay creation part, delete the temporary files
         os.remove(self.streaming_path)
@@ -148,6 +152,25 @@ class ReplayFilePeer:
         with zipfile.ZipFile(self.pending_path, 'w') as z_file:
             z_file.write(self.info_path, os.path.basename(self.info_path))
             z_file.write(self.streaming_path, os.path.basename(self.streaming_path))
+
+    async def run_subprocess(self, code):
+        coro = asyncio.create_subprocess_exec(sys.executable, '-c', code)
+        process = await coro
+        await process.wait()
+
+        if process.returncode != 0:
+            raise Exception
+
+    async def create_zipreplay_async(self):
+        code = format("""
+                    import zipfile;
+                    with zipfile.ZipFile({0}, 'w') as z_file:
+                        z_file.write({1}, os.path.basename({1}))
+                        z_file.write({2}, os.path.basename({2}))
+               """, self.pending_path, self.info_path, self.streaming_path)
+
+        await self.run_subprocess(code)
+        return
 
     async def insert_replay(self):
         pool = await db.get_pool()
