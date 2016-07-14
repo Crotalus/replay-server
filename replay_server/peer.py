@@ -3,6 +3,7 @@ import os
 import asyncio
 import zlib
 import zipfile
+import base64
 import json
 import logging
 
@@ -131,10 +132,14 @@ class ReplayFilePeer:
             info.update(ext_info)
 
         self.save_infofile(info)
+
+        """
         if config.ASYNC_ZIP:
             await self.create_zipreplay_thread()
         else:
             self.create_zipreplay()
+        """
+        self.create_legacy_fafreplay()
 
         # we survived the fafreplay creation part, delete the temporary files
         os.remove(self.streaming_path)
@@ -144,6 +149,13 @@ class ReplayFilePeer:
 
         # in the future, we should use db transaction to make sure we can rollback if this rename fails for some reason
         os.rename(self.pending_path, self.final_path)
+
+    def create_legacy_fafreplay(self):
+        with open(self.info_path, 'r') as i_file, open(self.streaming_path, 'rb') as s_file, open(self.pending_path, 'wb') as p_file:
+            infodata = i_file.read()
+            replaydata = s_file.read()
+            p_file.write((infodata + "\n").encode('utf-8'))
+            p_file.write(base64.b64encode(zlib.compress(replaydata)))
 
     def create_fafreplay(self):
         with open(self.info_path, 'r') as i_file, open(self.streaming_path, 'rb') as s_file, open(self.pending_path, 'wb') as p_file:
