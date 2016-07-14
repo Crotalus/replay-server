@@ -23,3 +23,5 @@ STREAMING_FOLDER = REPLAY_FOLDER + "streaming/"
 PENDING_FOLDER = REPLAY_FOLDER + "pending/"
 
 ASYNC_ZIP = True
+# interval between each disk flush in seconds
+FLUSH_INTERVAL = 30

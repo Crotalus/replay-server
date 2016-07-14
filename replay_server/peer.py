@@ -79,6 +79,9 @@ class ReplayFilePeer:
     def send(self, step_data):
         self.file.write(step_data)
         self.sent_step += 1
+        interval = config.FLUSH_INTERVAL
+        if interval > 0 and not self.sent_step % (interval * 10):
+            self.file.flush()
 
     def finish(self):
         self.file.close()
