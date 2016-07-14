@@ -11,9 +11,11 @@ log = logging.getLogger(__name__)
 
 
 class attrdict(dict):
+
     def __init__(self, *args, **kwargs):
         super(attrdict, self).__init__(*args, **kwargs)
         self.__dict__ = self
+
 
 class CMDST:
     Advance = 0
@@ -67,9 +69,11 @@ ECmdStreamOp = attrdict({
     "CMDST_LuaSimCallback": 22,
     "CMDST_EndGame": 23
 })
-ECmdStreamOp_R = {v: k for k,v in ECmdStreamOp.items()}
+ECmdStreamOp_R = {v: k for k, v in ECmdStreamOp.items()}
+
 
 class CMDST_Operation:
+
     def __init__(self, op, data):
         self.op = op
         self.data = data
@@ -82,9 +86,11 @@ class CMDST_Operation:
         return '{0} ( {1} )'.format(ECmdStreamOp_R[self.op], self.data)
 
     def __bytes__(self):
-        return pack('<BH', self.op, len(self.data)+3)+self.data
+        return pack('<BH', self.op, len(self.data) + 3) + self.data
+
 
 class ReplayStep:
+
     def __init__(self, tick_id, step_ops):
 
         self.tick = tick_id
@@ -100,7 +106,7 @@ class ReplayStep:
     def debug_cmp(self, other):
         if self.tick != other.tick:
             log.debug('ReplayStep.eq - Tick mismatch: %d != %d' %
-                  (self.tick, other.tick))
+                      (self.tick, other.tick))
             return False
 
         if self.operations != other.operations:

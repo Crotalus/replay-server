@@ -24,6 +24,7 @@ class UnknownMethod(Exception):
 
 
 class Client:
+
     def __init__(self, reader: StreamReader, writer: StreamWriter):
         self.reader = reader
         self.writer = writer
@@ -39,7 +40,9 @@ class Client:
     def close(self):
         self.writer.close()
 
+
 class ReplayServer:
+
     def __init__(self, address: str, port):
         self.address = address
         self.port = port
@@ -48,13 +51,12 @@ class ReplayServer:
         self.replay_peers = set()
 
     def run(self, loop):
-        log.info('Live Replay Server listening on %s:%s', self.address, self.port)
+        log.info('Live Replay Server listening on %s:%s',
+                 self.address, self.port)
         self.loop = loop
-        coro = asyncio.start_server(self.connect_handler, self.address, self.port, loop=self.loop)
+        coro = asyncio.start_server(
+            self.connect_handler, self.address, self.port, loop=self.loop)
         self.server = loop.run_until_complete(coro)
-
-        #self.server.init_socket()
-        #self.server.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 
     def stop(self):
         log.info('Shutting down gracefully.')
@@ -78,14 +80,15 @@ class ReplayServer:
 
     async def connect_handler(self, client_reader, client_writer):
         client = Client(client_reader, client_writer)
-        log.info('Connection from %s. [%3d clients]', client.address, len(self.clients))
+        log.info('Connection from %s. [%3d clients]',
+                 client.address, len(self.clients))
         self.clients.add(client)
         await self.handle_client(client)
 
     async def handle_client(self, client):
         async def readNulString(client):
             # if running 3.5.2
-            #data = await client.reader.readuntil(b'\x00')
+            # data = await client.reader.readuntil(b'\x00')
             data = b''
             c = await client.reader.read(1)
             while c and c != b'\x00':
@@ -101,7 +104,7 @@ class ReplayServer:
 
             game_id = int(replay_name.split("/")[1])
 
-            if gpg_head[0] == 'P': # 'P'osting
+            if gpg_head[0] == 'P':  # 'P'osting
                 log.info('%s POST %s', client.address, replay_name)
 
                 if replay_name.endswith(".gwreplay"):
@@ -121,7 +124,7 @@ class ReplayServer:
                     try:
                         await streamer.read_stream()
                     except OSError:
-                        pass # Disconnected
+                        pass  # Disconnected
 
                 if len(stream.streamers) == 0:
                     log.debug("No more streamers, ending stream")
@@ -129,7 +132,7 @@ class ReplayServer:
 
                 log.debug("Streamers left: %s", len(stream.streamers))
 
-            elif gpg_head[0] == 'G': # 'G'etting
+            elif gpg_head[0] == 'G':  # 'G'etting
                 log.info('%s GET %s', client.address, replay_name)
 
                 stream = self.replay_streams.get(game_id)
@@ -145,12 +148,14 @@ class ReplayServer:
                     try:
                         await stream.stream_steps(peer)
                     except BrokenPipeError:
-                        pass # Disconnected
+                        pass  # Disconnected
             else:
-                raise UnknownMethod('%s unknown method: %s' % (client.address, gpg_head))
+                raise UnknownMethod('%s unknown method: %s' %
+                                    (client.address, gpg_head))
         except Exception:
             raise
         finally:
             client.close()
             self.clients.remove(client)
-            log.info('%s disconnected. [%3d clients]', client.address, len(self.clients))
+            log.info('%s disconnected. [%3d clients]',
+                     client.address, len(self.clients))

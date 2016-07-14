@@ -1,6 +1,7 @@
 
 from contextlib import contextmanager
 
+
 @contextmanager
 def keepref(of_object, in_container):
     try:

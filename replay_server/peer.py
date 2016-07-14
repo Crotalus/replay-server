@@ -14,7 +14,9 @@ import db
 
 log = logging.getLogger(__name__)
 
+
 class ReplayPeer:
+
     def __init__(self, client):
         self.client = client
         self.address = self.client.address
@@ -54,7 +56,8 @@ class ReplayFilePeer:
         i = depth
         dirname = path
         while i > 1:
-            dirname = os.path.join(dirname, str((self.game_id // (dirsize ** (i-1))) % dirsize))
+            dirname = os.path.join(dirname, str(
+                (self.game_id // (dirsize ** (i - 1))) % dirsize))
             i = i - 1
 
         if not os.path.exists(dirname):
@@ -73,6 +76,7 @@ class ReplayFilePeer:
     @property
     def pending_path(self):
         return os.path.join(config.PENDING_FOLDER, '%d.fafreplay' % self.game_id)
+
     @property
     def final_path(self):
         return os.path.join(self.nestedpath, '%d.fafreplay' % self.game_id)
@@ -80,8 +84,7 @@ class ReplayFilePeer:
     def send(self, step_data):
         self.file.write(step_data)
         self.sent_step += 1
-        interval = config.FLUSH_INTERVAL
-        if interval > 0 and not self.sent_step % (interval * 10):
+        if config.FLUSH_INTERVAL > 0 and not self.sent_step % (config.FLUSH_INTERVAL * 10):
             self.file.flush()
 
     def finish(self):
@@ -109,7 +112,8 @@ class ReplayFilePeer:
                 LEFT JOIN game_featuredMods f ON gs.gameMod = f.id WHERE gs.id = '%s'
             """
 
-            # Do we really need all these LEFT JOINs? Seems like we should try to keep table relations more sane
+            # Do we really need all these LEFT JOINs? Seems like we should try
+            # to keep table relations more sane
             """
                 SELECT f.gamemod, gs.gameType, m.filename, gs.gameName, l.host, l.login, gps.playerId, gps.AI, gps.team
                 FROM game_stats gs LEFT JOIN game_player_stats gps ON gps.gameId = gs.id LEFT JOIN table_map m ON m.id = gs.mapId
@@ -125,7 +129,8 @@ class ReplayFilePeer:
 
     async def persist_replay(self):
         info = self.get_streaminfo()
-        self.save_infofile(info)  # if something goes wrong, still keep a file with the json data
+        # if something goes wrong, still keep a file with the json data
+        self.save_infofile(info)
 
         ext_info = await self.get_gameinfo()
         if ext_info:

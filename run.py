@@ -21,12 +21,12 @@ log = logging.getLogger(__name__)
 
 #db = MySQLDatabase(config.DATABASE)
 
-#faf_orm_init_db(db)
+# faf_orm_init_db(db)
 
 # ==== Initialize Server ====
 
 loop = asyncio.get_event_loop()
-#loop.set_debug('enabled')
+# loop.set_debug('enabled')
 
 server = ReplayServer(config.LISTEN_ADDRESS, config.LISTEN_PORT)
 
@@ -46,7 +46,8 @@ if sys.platform == 'linux':
         server.stop()
 
     for s in ('SIGINT', 'SIGTERM',):
-        loop.add_signal_handler(getattr(signal, s), functools.partial(handle_signal, s))
+        loop.add_signal_handler(
+            getattr(signal, s), functools.partial(handle_signal, s))
 
 try:
     loop.run_forever()

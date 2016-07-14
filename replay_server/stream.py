@@ -23,6 +23,7 @@ def STAssert(condition, message=None):
 
 class ReplayStream:
     # pylint: disable=too-many-instance-attributes
+
     def __init__(self, game_id):
         log.debug("Init new replay_stream, id: %s", game_id)
 
@@ -60,7 +61,8 @@ class ReplayStream:
         with keepref(to_peer, self.peers):
             await asyncio.wait_for(self.header_ev.wait(), None)
 
-            log.info('%s -> %s started. [%d peers]', self, to_peer, len(self.peers))
+            log.info('%s -> %s started. [%d peers]',
+                     self, to_peer, len(self.peers))
             to_peer.send(self.header_data)
 
             while 1:
@@ -80,7 +82,8 @@ class ReplayStream:
 
                 await asyncio.sleep(0.1)
 
-            log.info('%s -> %s finished. [%d peers]', self, to_peer, len(self.peers))
+            log.info('%s -> %s finished. [%d peers]',
+                     self, to_peer, len(self.peers))
 
     # ==== These are called by ReplayStreamer ====
     def add_streamer(self, streamer):
@@ -99,11 +102,10 @@ class ReplayStream:
             self.header_data = header_bin
             self.header_ev.set()
         else:
-            #header['random'] = self.header['random']  # XXX: for restart debugging
+            # header['random'] = self.header['random']  # XXX: for restart debugging
             #log.debug("self.header:\n{0}\nheader:\n{1}\n".format(self.header, header))
             self.desynced = True
             STAssert(str(header) == str(self.header), 'Header difference.')
-
 
     def push_step(self, streamer, step):
         assert isinstance(step, ReplayStep)
@@ -113,13 +115,13 @@ class ReplayStream:
             return
 
         if self.step >= step.tick:
-            cur_step = self.steps[step.tick-1]
+            cur_step = self.steps[step.tick - 1]
             if cur_step != step:
                 log.debug("From:%s and %s", cur_step._debug_streamer, streamer)
                 cur_step.debug_cmp(step)
 
             self.desynced = True
-            STAssert(self.steps[step.tick-1] == step, 'Step difference.')
+            STAssert(self.steps[step.tick - 1] == step, 'Step difference.')
         else:
             step._debug_streamer = str(streamer)
 

@@ -8,23 +8,24 @@ log = logging.getLogger(__name__)
 
 
 class ReplayStreamer:
+
     def __init__(self, stream, client, replay_name, game_id):
         self.game_id = game_id
-        self.name = replay_name[replay_name.find('/', 1)+1:]
+        self.name = replay_name[replay_name.find('/', 1) + 1:]
 
         self.stream = stream
 
         self.client = client
         self.address = self.client.address
 
-        self.step_buffer = [] # Buffers a step
+        self.step_buffer = []  # Buffers a step
 
-        self.header = None # Replay Header Dict
-        self.header_data = None # Replay Header binary
+        self.header = None  # Replay Header Dict
+        self.header_data = None  # Replay Header binary
 
-        self.steps = [] # All steps
+        self.steps = []  # All steps
 
-        self.step = 0 # Beat id
+        self.step = 0  # Beat id
 
     @property
     def map(self):
@@ -40,9 +41,9 @@ class ReplayStreamer:
                 self.name, self.map, self.map_name)
 
     def advance_step(self, n_beats):
-        assert n_beats == 1 # n_beats might be used in future
+        assert n_beats == 1  # n_beats might be used in future
 
-        step = ReplayStep(self.step+1, self.step_buffer)
+        step = ReplayStep(self.step + 1, self.step_buffer)
         self.steps.append(step)
 
         self.step += 1

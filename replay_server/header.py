@@ -14,25 +14,25 @@ async def readNulString(stream):
 
 async def parseLua(ds):
     ty = await ds.readUInt8()
-    if ty == 0: # num
+    if ty == 0:  # num
         return await ds.readFloat()
-    elif ty == 1: # str
+    elif ty == 1:  # str
         return await readNulString(ds)
-    elif ty == 2: # nil
+    elif ty == 2:  # nil
         await ds.readUInt8()
         return None
-    elif ty == 3: # bool
+    elif ty == 3:  # bool
         return await ds.readUInt8() != 0
-    elif ty == 4: # table
+    elif ty == 4:  # table
 
         table = {}
 
-        while await ds.peek(1) != b'\x05': # 5 means table stream finished
+        while await ds.peek(1) != b'\x05':  # 5 means table stream finished
             key = await parseLua(ds)
             val = await parseLua(ds)
             table[key] = val
 
-        await ds.readUInt8() # 0x5
+        await ds.readUInt8()  # 0x5
         return table
     else:
         raise RuntimeError("Unknown lua type id: %d" % ty)
@@ -87,8 +87,10 @@ async def parseHeader(ds):
 
     return result
 
+
 class DataStream:
     "Somewhat mirrors QDataStream"
+
     def __init__(self, file):
         self.file = file
         self.peeked = b''
