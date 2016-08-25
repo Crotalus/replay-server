@@ -15,7 +15,7 @@ import config
 class ReplayFile:
 
     def __init__(self, file, info=None):
-        self.id = os.path.basename(file)
+        self.id = int(os.path.splitext(os.path.basename(file))[0])
         self.info = info
 
     def load_info(self, file):
@@ -44,14 +44,17 @@ class ReplayFile:
 
         return dirname
 
+    def _build_path(self, path, ext):
+        return os.path.join(path, '{0}.{1}'.format(self.id, ext))
+
     def pending_file(self, ext='fafreplay'):
-        return os.path.join(config.PENDING_FOLDER, '%d.%s' % self.id, ext)
+        return self._build_path(config.PENDING_FOLDER, ext)
 
     def streaming_file(self, ext='screplay'):
-        return os.path.join(config.STREAMING_FOLDER, '%d.%s' % self.id, ext)
+        return self._build_path(config.STREAMING_FOLDER, ext)
 
     def final_file(self, ext='fafreplay'):
-        return os.path.join(self.nestedpath, '%d.%s' % self.id, ext)
+        return self._build_path(self.nestedpath, ext)
 
     async def get_gameinfo(self):
         info = None
@@ -133,12 +136,12 @@ class ReplayFile:
         os.rename(fafreplay, self.final_file())
 
     def create_fafreplay(self, legacy=True):
-        info_file = self.pending_file('json')
+        infofile = self.pending_file('json')
         screplay = self.pending_file('screplay')
         fafreplay = self.pending_file('fafreplay')
 
-        with open(info_file, 'r') as i_file, open(screplay, 'rb') as sc, open(fafreplay, 'wb') as faf:
-            info = i_file.read()
+        with open(infofile, 'r') as ifile, open(screplay, 'rb') as sc, open(fafreplay, 'wb') as faf:
+            info = ifile.read()
             faf.write((info + "\n").encode('utf-8'))
             if legacy:
                 #  legacy format uses base64 encoding
@@ -147,11 +150,15 @@ class ReplayFile:
                 faf.write(zlib.compress(sc.read()))
 
     def create_zipreplay(self):
-        with zipfile.ZipFile(self.pending_fafreplay_path, 'w') as z_file:
-            z_file.write(self.info_file_path,
-                         os.path.basename(self.info_file_path))
-            z_file.write(self.streaming_replay_path,
-                         os.path.basename(self.streaming_replay_path))
+        infofile = self.pending_file('json')
+        screplay = self.pending_file('screplay')
+        fafreplay = self.pending_file('fafreplay')
+
+        with zipfile.ZipFile(fafreplay, 'w') as z_file:
+            z_file.write(infofile,
+                         os.path.basename(infofile))
+            z_file.write(screplay,
+                         os.path.basename(screplay))
 
     async def create_zipreplay_thread(self):
         loop = asyncio.get_event_loop()

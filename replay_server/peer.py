@@ -4,11 +4,7 @@ import asyncio
 import json
 import config
 
-import ReplayFile
-
-
-log = logging.getLogger(__name__)
-
+from .replayfile import ReplayFile
 
 class ReplayPeer:
 
@@ -63,10 +59,10 @@ class ReplayFilePeer:
         asyncio.ensure_future(self.persist_replay(), loop=loop)
 
     def get_streaminfo(self):
-        return dict(complete=self.stream.game_ended, desynced=self.stream.desynced, featured_mod='faf', ticks=self.stream.step, , uid=self.game_id)
+        return dict(complete=self.stream.game_ended, desynced=self.stream.desynced, featured_mod='faf', ticks=self.stream.step, uid=self.game_id)
 
     def save_infofile(self, info):
-        with open(self.info_file_path, 'w') as file:
+        with open(self.info_path, 'w') as file:
             json.dump(info, file)
 
     async def persist_replay(self):
