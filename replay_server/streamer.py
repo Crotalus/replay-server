@@ -81,7 +81,7 @@ class ReplayStreamer:
         await self.read_header()
         self.stream.push_header(self.header, self.header_data)
 
-        while 1:
+        while True:
             op = await self.read_operation()
             self.step_buffer.append(op)
             if op.op in [CMDST.Advance, CMDST.SingleStep]:

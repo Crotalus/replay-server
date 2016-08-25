@@ -65,7 +65,7 @@ class ReplayStream:
                      self, to_peer, len(self.peers))
             to_peer.send(self.header_data)
 
-            while 1:
+            while True:
                 to_step = self.step
                 if to_step > 1 and not self.game_ended and isinstance(to_peer, ReplayPeer):
                     to_step -= LIVE_DELAY
