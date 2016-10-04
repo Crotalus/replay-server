@@ -1,8 +1,11 @@
 """
 GPG Replay Header parsing
 """
+import logging
 from struct import unpack
 from .data import attrdict
+
+log = logging.getLogger(__name__)
 
 async def readNulString(stream):
     byte = await stream.readUInt8()
@@ -105,11 +108,19 @@ class DataStream:
         return self.peeked[:n]
 
     async def _read(self, n):
-        ret = await self.file.read(n)
+        ret = b''
+        n_read = 0
+        while n_read < n:
+            new = await self.file.read(n-n_read)
+            if not new:
+                log.error("Failed to read %d of %d bytes from stream", n-n_read, n)
+                break
+
+            ret += new
+            n_read = len(ret)
+
         self._data += ret
-        if len(ret) != n:
-            log.info('Failed to read %d, got: %s' % (n, ret))
-            log.info(self.file.read(1))
+
         return ret
 
     async def read(self, n):
