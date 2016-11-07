@@ -122,9 +122,9 @@ class ReplayStep:
                     op_b = None
 
                 if op_a != op_b:
-                    print('%4x: %30s != %30s' % (i, op_a, op_b))
+                    log.debug('%4x: %30s != %30s', i, op_a, op_b)
                 else:
-                    print('%4x: %30s == %30s' % (i, op_a, op_b))
+                    log.debug('%4x: %30s == %30s', i, op_a, op_b)
 
             return False
         return True

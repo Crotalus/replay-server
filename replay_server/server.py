@@ -80,9 +80,9 @@ class ReplayServer:
 
     async def connect_handler(self, client_reader, client_writer):
         client = Client(client_reader, client_writer)
-        log.info('Connection from %s. [%3d clients]',
-                 client.address, len(self.clients))
         self.clients.add(client)
+        log.info('Connection from %s. [%d client(s)]',
+                 client.address, len(self.clients))
         await self.handle_client(client)
 
     async def handle_client(self, client):
@@ -157,5 +157,5 @@ class ReplayServer:
         finally:
             client.close()
             self.clients.remove(client)
-            log.info('%s disconnected. [%3d clients]',
+            log.info('%s disconnected. [%d client(s)]',
                      client.address, len(self.clients))
