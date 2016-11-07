@@ -1,16 +1,11 @@
 import logging
-
 import asyncio
 from asyncio import StreamReader, StreamWriter
-
-from os.path import join as pjoin
 from weakref import WeakValueDictionary
-from .peer import ReplayPeer, ReplayFilePeer
-from .streamer import ReplayStreamer
+from .peer import ReplayFilePeer, ReplayPeer
 from .stream import ReplayStream
+from .streamer import ReplayStreamer
 from .util import keepref
-
-import config
 
 log = logging.getLogger(__name__)
 
@@ -49,6 +44,8 @@ class ReplayServer:
         self.clients = set()
         self.replay_streams = WeakValueDictionary()
         self.replay_peers = set()
+        self.server = None
+        self.loop = None
 
     def run(self, loop):
         log.info('Live Replay Server listening on %s:%s',

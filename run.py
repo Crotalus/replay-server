@@ -5,6 +5,7 @@ import logging
 import config
 
 from replay_server.server import ReplayServer
+from replay_server.control import ControlServer
 
 if sys.version_info.major != 3:
     raise RuntimeError("FAForever Live Replay Server requires python 3.\n")
@@ -37,6 +38,8 @@ for f in [config.REPLAY_FOLDER, config.STREAMING_FOLDER, config.PENDING_FOLDER]:
 
 log.info('Starting...')
 server.run(loop)
+control = ControlServer(server)
+control.run(loop)
 
 if sys.platform == 'linux':
     import signal
