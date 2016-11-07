@@ -14,13 +14,6 @@ log = logging.getLogger(__name__)
 class ReplayStreamDiverged(Exception):
     pass
 
-
-def STAssert(condition, message=None):
-    "Stream Assert"
-    if not condition:
-        raise ReplayStreamDiverged(message)
-
-
 class ReplayStream:
     # pylint: disable=too-many-instance-attributes
 
@@ -54,6 +47,12 @@ class ReplayStream:
     def __str__(self):
         return 'Stream(%s, %s (%s))' \
                % (self.game_id, self.map, self.map_name)
+
+    def st_assert(self, condition, message=None):
+        if not condition:
+            self.desynced = True
+            raise ReplayStreamDiverged(message)
+
 
     async def stream_steps(self, to_peer: ReplayPeer):
         "Stream replay to_peer"
@@ -103,9 +102,7 @@ class ReplayStream:
             self.header_ev.set()
         else:
             # header['random'] = self.header['random']  # XXX: for restart debugging
-            #log.debug("self.header:\n{0}\nheader:\n{1}\n".format(self.header, header))
-            self.desynced = True
-            STAssert(str(header) == str(self.header), 'Header difference.')
+            self.st_assert(header == self.header, 'Header difference.')
 
     def push_step(self, streamer, step):
         assert isinstance(step, ReplayStep)
@@ -120,13 +117,10 @@ class ReplayStream:
                 log.debug("From:%s and %s", cur_step._debug_streamer, streamer)
                 cur_step.debug_cmp(step)
 
-            self.desynced = True
-            STAssert(self.steps[step.tick - 1] == step, 'Step difference.')
+            self.st_assert(self.steps[step.tick - 1] == step, 'Step difference.')
         else:
             step._debug_streamer = str(streamer)
-
             self.steps.append(step)
-
             self.step += 1
 
             if self.step % 600 == 0:
