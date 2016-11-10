@@ -4,6 +4,7 @@ Functions and classes related to replay structure
 
 from struct import pack
 from time import time
+from enum import IntEnum
 
 import logging
 
@@ -17,7 +18,7 @@ class attrdict(dict):
         self.__dict__ = self
 
 
-class CMDST:
+class CMDST(IntEnum):
     Advance = 0
     SetCommandSource = 1
     CommandSourceTerminated = 2
@@ -43,39 +44,10 @@ class CMDST:
     LuaSimCallback = 22
     EndGame = 23
 
-ECmdStreamOp = attrdict({
-    "CMDST_Advance": 0,
-    "CMDST_SetCommandSource": 1,
-    "CMDST_CommandSourceTerminated": 2,
-    "CMDST_VerifyChecksum": 3,
-    "CMDST_RequestPause": 4,
-    "CMDST_Resume": 5,
-    "CMDST_SingleStep": 6,
-    "CMDST_CreateUnit": 7,
-    "CMDST_CreateProp": 8,
-    "CMDST_DestroyEntity": 9,
-    "CMDST_WarpEntity": 10,
-    "CMDST_ProcessInfoPair": 11,
-    "CMDST_IssueCommand": 12,
-    "CMDST_IssueFactoryCommand": 13,
-    "CMDST_IncreaseCommandCount": 14,
-    "CMDST_DecreaseCommandCount": 15,
-    "CMDST_SetCommandTarget": 16,
-    "CMDST_SetCommandType": 17,
-    "CMDST_SetCommandCells": 18,
-    "CMDST_RemoveCommandFromQueue": 19,
-    "CMDST_DebugCommand": 20,
-    "CMDST_ExecuteLuaInSim": 21,
-    "CMDST_LuaSimCallback": 22,
-    "CMDST_EndGame": 23
-})
-ECmdStreamOp_R = {v: k for k, v in ECmdStreamOp.items()}
-
-
 class CMDST_Operation:
 
     def __init__(self, op, data):
-        self.op = op
+        self.op = CMDST(op)
         self.data = data
 
     def __eq__(self, other):
@@ -83,7 +55,7 @@ class CMDST_Operation:
             and self.op == other.op and self.data == other.data
 
     def __str__(self):
-        return '{0} ( {1} )'.format(ECmdStreamOp_R[self.op], self.data)
+        return '{0} ( {1} )'.format(self.op, self.data)
 
     def __bytes__(self):
         return pack('<BH', self.op, len(self.data) + 3) + self.data
@@ -105,8 +77,7 @@ class ReplayStep:
 
     def debug_cmp(self, other):
         if self.tick != other.tick:
-            log.debug('ReplayStep.eq - Tick mismatch: %d != %d' %
-                      (self.tick, other.tick))
+            log.debug('ReplayStep.eq - Tick mismatch: %d != %d', self.tick, other.tick)
             return False
 
         if self.operations != other.operations:
