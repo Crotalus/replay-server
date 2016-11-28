@@ -43,20 +43,20 @@ async def parseLua(ds):
 async def parseHeader(ds):
     result = attrdict()
     result.ver = await readNulString(ds)
-    unknown = await readNulString(ds)
+    result.unknown = await readNulString(ds)
     result.map = (await readNulString(ds)).splitlines()[1]
-    unknown2 = await readNulString(ds)
+    result.unknown2 = await readNulString(ds)
 
-    mods_size = await ds.readUInt32()
+    result.mods_size = await ds.readUInt32()
     result.mods = await parseLua(ds)
 
-    scenario_size = await ds.readUInt32()
+    result.scenario_size = await ds.readUInt32()
     result.scenario = await parseLua(ds)
 
     n_sources = await ds.readUInt8()
     timeouts_rem = {}
 
-    for i in range(n_sources):
+    for _ in range(n_sources):
         name = await readNulString(ds)
         num = await ds.readUInt32()
 
@@ -70,7 +70,7 @@ async def parseHeader(ds):
     cmd_sources = []
 
     armies = []
-    for i in range(n_armies):
+    for _ in range(n_armies):
         data_size = await ds.readUInt32()
         data = await parseLua(ds)
         source_id = await ds.readUInt8()
@@ -124,12 +124,13 @@ class DataStream:
         return ret
 
     async def read(self, n):
-        if len(self.peeked) > 0:
-            if len(self.peeked) >= n:
+        n_peeked = len(self.peeked)
+        if n_peeked > 0:
+            if n_peeked >= n:
                 ret = self.peeked[:n]
                 self.peeked = self.peeked[n:]
             else:
-                ret = self.peeked + await self._read(n - len(self.peeked))
+                ret = self.peeked + await self._read(n - n_peeked)
                 self.peeked = b''
             return ret
         else:

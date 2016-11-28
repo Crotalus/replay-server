@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 
 class ControlServer:
     def __init__(self, replay_server: ReplayServer):
+        self.loop = None
+        self.server = None
         self.replay_server = replay_server
 
     def clients(self, request):
@@ -23,11 +25,9 @@ class ControlServer:
         app = web.Application(loop=loop)
         app.router.add_route('GET', '/clients', self.clients)
 
-        coro = loop.create_server(app.make_handler(), '127.0.0.1', port)
+        coro = loop.create_server(app.make_handler(), self.replay_server.address, port)
         logger.info('Control Server listening on %s:%s', self.replay_server.address, port)
         self.server = loop.run_until_complete(coro)
-
-
 
 
 @asyncio.coroutine

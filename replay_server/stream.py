@@ -25,7 +25,7 @@ class ReplayStream:
         self.header = None  # Replay Header Dict
         self.header_data = None  # Replay Header binary
 
-        self.header_ev = asyncio.Event()  # Set when header received
+        self.header_received = asyncio.Event()  # Set when header received
 
         self.steps = []  # All steps
         self.step = 0  # Beat id
@@ -58,7 +58,7 @@ class ReplayStream:
         "Stream replay to_peer"
 
         with keepref(to_peer, self.peers):
-            await asyncio.wait_for(self.header_ev.wait(), None)
+            await asyncio.wait_for(self.header_received.wait(), None)
 
             log.info('%s -> %s started. [%d peers]',
                      self, to_peer, len(self.peers))
@@ -99,7 +99,7 @@ class ReplayStream:
         if not self.header:
             self.header = header
             self.header_data = header_bin
-            self.header_ev.set()
+            self.header_received.set()
         else:
             # header['random'] = self.header['random']  # XXX: for restart debugging
             self.st_assert(header == self.header, 'Header difference.')

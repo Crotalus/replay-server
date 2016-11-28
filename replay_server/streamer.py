@@ -1,7 +1,7 @@
 from struct import unpack
 import logging
 
-from .data import *
+from .data import ReplayStep, CMDST, CMDST_Operation
 from .header import parseHeader, DataStream
 
 log = logging.getLogger(__name__)

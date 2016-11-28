@@ -32,7 +32,7 @@ class ReplayFilePeer:
         self.sent_step = -1  # Last step sent, -1 due to header
 
     def __str__(self):
-        return 'Peer( %s )' % self.file.name
+        return 'ReplayFile(%s)' % self.file.name
 
     @property
     def game_id(self):

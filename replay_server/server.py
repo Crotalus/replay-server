@@ -1,4 +1,5 @@
 import logging
+import os
 import asyncio
 from asyncio import StreamReader, StreamWriter
 from weakref import WeakValueDictionary
@@ -10,9 +11,11 @@ from .util import keepref
 log = logging.getLogger(__name__)
 
 
-class UnknownReplay(Exception):
+class UnknownReplayFormat(Exception):
     pass
 
+class UnknownReplay(Exception):
+    pass
 
 class UnknownMethod(Exception):
     pass
@@ -38,7 +41,7 @@ class Client:
 
 class ReplayServer:
 
-    def __init__(self, address: str, port):
+    def __init__(self, address: str, port: int):
         self.address = address
         self.port = port
         self.clients = set()
@@ -48,8 +51,7 @@ class ReplayServer:
         self.loop = None
 
     def run(self, loop):
-        log.info('Live Replay Server listening on %s:%s',
-                 self.address, self.port)
+        log.info('Live Replay Server listening on %s:%s', self.address, self.port)
         self.loop = loop
         coro = asyncio.start_server(
             self.connect_handler, self.address, self.port, loop=self.loop)
@@ -78,9 +80,45 @@ class ReplayServer:
     async def connect_handler(self, client_reader, client_writer):
         client = Client(client_reader, client_writer)
         self.clients.add(client)
-        log.info('Connection from %s. [%d client(s)]',
-                 client.address, len(self.clients))
+        log.info('Connection from %s. [n_clients: %d]', client.address, len(self.clients))
         await self.handle_client(client)
+
+    async def handle_replay_streamer(self, client, replay_name, game_id):
+        log.info('%s POST %s', client.address, replay_name)
+        _, ext = os.path.splitext(replay_name)
+
+        if ext not in ['.fafreplay', '.scfareplay']:
+            raise UnknownReplayFormat()
+
+        stream = self.create_stream(game_id)
+        streamer = ReplayStreamer(stream, client, replay_name, game_id)
+
+        with keepref(streamer, stream.streamers):
+            try:
+                await streamer.read_stream()
+            except OSError:
+                pass  # Disconnected
+
+        if len(stream.streamers) == 0:
+            log.debug("No more streamers, ending stream")
+            stream.end()
+        else:
+            log.debug("Streamers left: %s", len(stream.streamers))
+
+    async def handle_replay_watcher(self, client, replay_name, game_id):
+        log.info('%s GET %s', client.address, replay_name)
+        stream = self.replay_streams.get(game_id)
+        if not stream:
+            raise UnknownReplay('%s requested unknown replay: %s' % (client.address, replay_name))
+
+        log.info('Connecting %s to %s', client.address, stream)
+        peer = ReplayPeer(client)
+
+        with keepref(peer, self.replay_peers):
+            try:
+                await stream.stream_steps(peer)
+            except BrokenPipeError:
+                pass  # Disconnected
 
     async def handle_client(self, client):
         async def readNulString(client):
@@ -102,57 +140,14 @@ class ReplayServer:
             game_id = int(replay_name.split("/")[1])
 
             if gpg_head[0] == 'P':  # 'P'osting
-                log.info('%s POST %s', client.address, replay_name)
-
-                if replay_name.endswith(".gwreplay"):
-                    galactic_war = True
-                elif replay_name.endswith('.fafreplay'):
-                    galactic_war = False
-                elif replay_name.endswith(".scfareplay"):
-                    log.exception("Can't handle .scfareplay: %s", replay_name)
-                else:
-                    log.exception('Unknown replay extension: %s', replay_name)
-
-                stream = self.create_stream(game_id)
-
-                streamer = ReplayStreamer(stream, client, replay_name, game_id)
-
-                with keepref(streamer, stream.streamers):
-                    try:
-                        await streamer.read_stream()
-                    except OSError:
-                        pass  # Disconnected
-
-                if len(stream.streamers) == 0:
-                    log.debug("No more streamers, ending stream")
-                    stream.end()
-
-                log.debug("Streamers left: %s", len(stream.streamers))
-
+                await self.handle_replay_streamer(client, replay_name, game_id)
             elif gpg_head[0] == 'G':  # 'G'etting
-                log.info('%s GET %s', client.address, replay_name)
-
-                stream = self.replay_streams.get(game_id)
-
-                if not stream:
-                    raise UnknownReplay('%s requested unknown replay: %s'
-                                        % (client.address, replay_name))
-
-                log.info('Connecting %s to %s', client.address, stream)
-                peer = ReplayPeer(client)
-
-                with keepref(peer, self.replay_peers):
-                    try:
-                        await stream.stream_steps(peer)
-                    except BrokenPipeError:
-                        pass  # Disconnected
+                await self.handle_replay_watcher(client, replay_name, game_id)
             else:
-                raise UnknownMethod('%s unknown method: %s' %
-                                    (client.address, gpg_head))
-        except Exception:
-            raise
+                raise UnknownMethod('%s unknown method: %s' % (client.address, gpg_head))
+        except UnknownReplayFormat:
+            log.exception('Unknown replay extension: %s', replay_name)
         finally:
             client.close()
             self.clients.remove(client)
-            log.info('%s disconnected. [%d client(s)]',
-                     client.address, len(self.clients))
+            log.info('%s disconnected. [n_clients: %d]', client.address, len(self.clients))

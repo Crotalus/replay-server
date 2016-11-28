@@ -1,4 +1,5 @@
 import os
+import time
 import asyncio
 import json
 import base64
@@ -11,6 +12,7 @@ import db
 
 import config
 
+log = logging.getLogger(__name__)
 
 class ReplayFile:
 
@@ -50,15 +52,13 @@ class ReplayFile:
     def pending_file(self, ext='fafreplay'):
         return self._build_path(config.PENDING_FOLDER, ext)
 
-    def streaming_file(self, ext='screplay'):
+    def streaming_file(self, ext='scfareplay'):
         return self._build_path(config.STREAMING_FOLDER, ext)
 
     def final_file(self, ext='fafreplay'):
         return self._build_path(self.nestedpath, ext)
 
     async def get_gameinfo(self):
-        info = None
-
         pool = await db.get_pool()
         async with pool.get() as conn:
             cursor = await conn.cursor(aiomysql.DictCursor)
@@ -77,25 +77,46 @@ class ReplayFile:
                 LEFT JOIN logins l ON l.id = gps.playerid LEFT JOIN game_featuredMods f ON gs.gameMod = f.id WHERE gs.id = '%s'
             """
 
-            await cursor.execute(query, self.info.uid)
+            log.debug("Get gameinfo about replay %d from database", self.id)
+
+            await cursor.execute(query, self.info['uid'])
             row = await cursor.fetchone()
             if row is not None:
-                info = row
+                info = {
+                    'game_end':time.time(),
+                    'featured_mod':row['gamemod'],
+                    'game_type':row['gameType'],
+                    'title':row['gameName'],
+                    'complete':True
+                }
+                info['mapname'] = os.path.splitext(os.path.basename(row['filename']))[0]
+                table = "updates_" + str(row['gamemod'])
+                query = "SELECT fileId, MAX(version) as version FROM `%s` LEFT JOIN %s ON `fileId` = %s.id GROUP BY fileId"
+                await cursor.execute(query, table + '_files', table, table)
+                for r in cursor:
+                    info['featured_mod_versions'][r['fileId']] = r['version']
 
-        return info
+                return info
+
+
+        return None
 
     async def insert_replay(self):
+        log.debug("Insert replay %d into database", self.id)
         pool = await db.get_pool()
         async with pool.get() as conn:
             cursor = await conn.cursor()
-            await cursor.execute("INSERT INTO game_replays (uid, ticks, desynced) VALUES ('%s', '%s', '%s')", (self.info.uid, self.info.ticks, self.info.desynced))
+            await cursor.execute("INSERT INTO game_replays (uid, ticks, desynced) VALUES ('%s', '%s', '%s')", (self.info['uid'], self.info['ticks'], self.info['desynced']))
 
     async def persist(self):
+        log.info('Persisting replay %d', self.id)
+
         if os.path.isfile(self.final_file()):
+            log.debug("%s already exists", self.final_file())
             return
 
-        # Move replay /info from streaming/ -> pending/ folder, XXX: check if not running
-        s_file = self.streaming_file('screplay')
+        # Move replay/info from streaming/ -> pending/ folder, XXX: check if not running
+        s_file = self.streaming_file('scfareplay')
         i_file = self.streaming_file('json')
         if os.path.isfile(s_file):
             if not self.info:
@@ -103,7 +124,7 @@ class ReplayFile:
             else:
                 self.save_info(i_file)
 
-            os.rename(s_file, self.pending_file('screplay'))
+            os.rename(s_file, self.pending_file('scfareplay'))
             os.rename(i_file, self.pending_file('json'))
 
         # Create fafreplay in pending/
@@ -127,7 +148,7 @@ class ReplayFile:
             """
             self.create_fafreplay()
             os.remove(i_file)
-            os.remove(self.pending_file('screplay'))
+            os.remove(self.pending_file('scfareplay'))
 
         await self.insert_replay()
 
@@ -137,7 +158,7 @@ class ReplayFile:
 
     def create_fafreplay(self, legacy=True):
         infofile = self.pending_file('json')
-        screplay = self.pending_file('screplay')
+        screplay = self.pending_file('scfareplay')
         fafreplay = self.pending_file('fafreplay')
 
         with open(infofile, 'r') as ifile, open(screplay, 'rb') as sc, open(fafreplay, 'wb') as faf:
@@ -151,7 +172,7 @@ class ReplayFile:
 
     def create_zipreplay(self):
         infofile = self.pending_file('json')
-        screplay = self.pending_file('screplay')
+        screplay = self.pending_file('scfareplay')
         fafreplay = self.pending_file('fafreplay')
 
         with zipfile.ZipFile(fafreplay, 'w') as z_file:
