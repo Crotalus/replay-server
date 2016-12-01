@@ -38,8 +38,10 @@ for f in [config.REPLAY_FOLDER, config.STREAMING_FOLDER, config.PENDING_FOLDER]:
 
 log.info('Starting...')
 server.run(loop)
-control = ControlServer(server)
-control.run(loop)
+
+if config.CONTROL_PORT:
+    control = ControlServer(server)
+    control.run(loop, config.CONTROL_PORT)
 
 if sys.platform == 'linux':
     import signal

@@ -18,10 +18,9 @@ class ControlServer:
         body = repr(list(self.replay_server.clients)).encode()
         return web.Response(body=body, content_type='application/json')
 
-    def run(self, loop):
+    def run(self, loop, port=4040):
         self.loop = loop
 
-        port = 4040
         app = web.Application(loop=loop)
         app.router.add_route('GET', '/clients', self.clients)
 

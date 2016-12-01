@@ -1,4 +1,3 @@
-
 # Replay streaming delay in steps (0.1 seconds)
 LIVE_DELAY = 3000
 
@@ -14,6 +13,9 @@ DATABASE = dict(
 # Address to bind to
 LISTEN_ADDRESS = ''
 LISTEN_PORT = 15000
+
+#CONTROL_PORT = 4040
+CONTROL_PORT = None
 
 # Root folder to store replays
 REPLAY_FOLDER = "vault/replay_vault/"
