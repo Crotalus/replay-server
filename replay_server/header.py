@@ -71,7 +71,8 @@ async def parseHeader(ds):
 
     armies = []
     for _ in range(n_armies):
-        data_size = await ds.readUInt32()
+        # data_size
+        _ = await ds.readUInt32()
         data = await parseLua(ds)
         source_id = await ds.readUInt8()
 
