@@ -40,13 +40,14 @@ class ReplayStream:
         self.peers = set()
 
         self.max_watchers = 0
+        self.total_watchers = -1
 
         self._debug_streamer = None
 
     @property
     def info(self):
         return dict(uid=self.game_id, started_at=self.started_at, ended_at=self.ended_at, complete=self.complete, desynced=self.desynced,
-                    featured_mod='faf', ticks=self.step, max_watchers=self.max_watchers)
+                    featured_mod='faf', ticks=self.step, max_watchers=self.max_watchers, total_watchers=self.total_watchers)
 
     @property
     def map(self):
@@ -72,6 +73,7 @@ class ReplayStream:
         with keepref(to_peer, self.peers):
             await asyncio.wait_for(self.header_received.wait(), None)
             self.max_watchers = max(0, len(self.peers)-1, self.max_watchers)
+            self.total_watchers += 1
 
             log.info('%s -> %s started. [%d peers]',
                      self, to_peer, len(self.peers))
