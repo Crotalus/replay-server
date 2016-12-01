@@ -1,18 +1,16 @@
 import os
-import time
 import asyncio
 import json
 import base64
 import zlib
 import zipfile
 import logging
-import aiomysql
-
-import db
-
+from struct import pack
 import config
+from .dbservice import DBService
 
 log = logging.getLogger(__name__)
+
 
 class ReplayFile:
 
@@ -58,56 +56,6 @@ class ReplayFile:
     def final_file(self, ext='fafreplay'):
         return self._build_path(self.nestedpath, ext)
 
-    async def get_gameinfo(self):
-        pool = await db.get_pool()
-        async with pool.get() as conn:
-            cursor = await conn.cursor(aiomysql.DictCursor)
-
-            query = """
-                SELECT f.gamemod, gs.gameType, m.filename, gs.gameName, gps.playerId, gps.AI, gps.team
-                FROM game_stats gs LEFT JOIN game_player_stats gps ON gps.gameId = gs.id LEFT JOIN table_map m ON m.id = gs.mapId
-                LEFT JOIN game_featuredMods f ON gs.gameMod = f.id WHERE gs.id = '%s'
-            """
-
-            # Do we really need all these LEFT JOINs? Seems like we should try
-            # to keep table relations more sane
-            """
-                SELECT f.gamemod, gs.gameType, m.filename, gs.gameName, l.host, l.login, gps.playerId, gps.AI, gps.team
-                FROM game_stats gs LEFT JOIN game_player_stats gps ON gps.gameId = gs.id LEFT JOIN table_map m ON m.id = gs.mapId
-                LEFT JOIN logins l ON l.id = gps.playerid LEFT JOIN game_featuredMods f ON gs.gameMod = f.id WHERE gs.id = '%s'
-            """
-
-            log.debug("Get gameinfo about replay %d from database", self.id)
-
-            await cursor.execute(query, self.info['uid'])
-            row = await cursor.fetchone()
-            if row is not None:
-                info = {
-                    'game_end':time.time(),
-                    'featured_mod':row['gamemod'],
-                    'game_type':row['gameType'],
-                    'title':row['gameName'],
-                    'complete':True
-                }
-                info['mapname'] = os.path.splitext(os.path.basename(row['filename']))[0]
-                table = "updates_" + str(row['gamemod'])
-                query = "SELECT fileId, MAX(version) as version FROM `%s` LEFT JOIN %s ON `fileId` = %s.id GROUP BY fileId"
-                await cursor.execute(query, table + '_files', table, table)
-                for r in cursor:
-                    info['featured_mod_versions'][r['fileId']] = r['version']
-
-                return info
-
-
-        return None
-
-    async def insert_replay(self):
-        log.debug("Insert replay %d into database", self.id)
-        pool = await db.get_pool()
-        async with pool.get() as conn:
-            cursor = await conn.cursor()
-            await cursor.execute("INSERT INTO game_replays (uid, ticks, desynced) VALUES ('%s', '%s', '%s')", (self.info['uid'], self.info['ticks'], self.info['desynced']))
-
     async def persist(self):
         log.info('Persisting replay %d', self.id)
 
@@ -127,6 +75,7 @@ class ReplayFile:
             os.rename(s_file, self.pending_file('scfareplay'))
             os.rename(i_file, self.pending_file('json'))
 
+        db_service = DBService()
         # Create fafreplay in pending/
         fafreplay = self.pending_file('fafreplay')
         if not os.path.isfile(fafreplay):
@@ -134,8 +83,8 @@ class ReplayFile:
             if not self.info:
                 self.load_info(i_file)
 
-            if True:  # XXX: ext_info check here
-                ext_info = await self.get_gameinfo()
+            if 'featured_mod' not in self.info:
+                ext_info = await db_service.get_gameinfo(self)
                 if ext_info:
                     self.info.update(ext_info)
                     self.save_info(i_file)
@@ -150,7 +99,7 @@ class ReplayFile:
             os.remove(i_file)
             os.remove(self.pending_file('scfareplay'))
 
-        await self.insert_replay()
+        await db_service.insert_replay(self)
 
         # in the future, we should use db transaction to make sure we can
         # rollback if this rename fails for some reason
@@ -164,11 +113,14 @@ class ReplayFile:
         with open(infofile, 'r') as ifile, open(screplay, 'rb') as sc, open(fafreplay, 'wb') as faf:
             info = ifile.read()
             faf.write((info + "\n").encode('utf-8'))
+            replaydata = zlib.compress(sc.read())
             if legacy:
-                #  legacy format uses base64 encoding
-                faf.write(base64.b64encode(zlib.compress(sc.read())))
+                #  legacy format uses base64 encoded zipstream with 4 bytes (big endian) data length header
+                replaysize = os.fstat(sc.fileno()).st_size
+                replaydata = pack('>I', replaysize) + replaydata
+                faf.write(base64.b64encode(replaydata))
             else:
-                faf.write(zlib.compress(sc.read()))
+                faf.write(replaydata)
 
     def create_zipreplay(self):
         infofile = self.pending_file('json')
