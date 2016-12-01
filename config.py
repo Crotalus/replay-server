@@ -23,7 +23,7 @@ REPLAY_FOLDER = "vault/replay_vault/"
 STREAMING_FOLDER = REPLAY_FOLDER + "streaming/"
 # Contains processed replays which didn't get into database for some reason
 PENDING_FOLDER = REPLAY_FOLDER + "pending/"
-# asynchronous zipping of replay
-ASYNC_ZIP = True
+# Valid replay formats are: legacy, zip, zip_async
+REPLAY_FORMAT = 'legacy'
 # interval between each disk flush in seconds
 FLUSH_INTERVAL = 30

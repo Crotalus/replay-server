@@ -89,13 +89,7 @@ class ReplayFile:
                     self.info.update(ext_info)
                     self.save_info(i_file)
 
-            """
-            if config.ASYNC_ZIP:
-                await self.create_zipreplay_thread()
-            else:
-                self.create_zipreplay()
-            """
-            self.create_fafreplay()
+            await self.write_replay()
             os.remove(i_file)
             os.remove(self.pending_file('scfareplay'))
 
@@ -105,7 +99,19 @@ class ReplayFile:
         # rollback if this rename fails for some reason
         os.rename(fafreplay, self.final_file())
 
-    def create_fafreplay(self, legacy=True):
+    async def write_replay(self):
+        format = config.REPLAY_FORMAT
+
+        if format == 'legacy':
+            self.create_legacy_replay()
+        elif format == 'zip':
+            self.create_zipreplay()
+        elif format == 'zip_async':
+            await self.create_zipreplay_async()
+        else:
+            raise Exception('Invalid replay format: ' + format)
+
+    def create_legacy_replay(self):
         infofile = self.pending_file('json')
         screplay = self.pending_file('scfareplay')
         fafreplay = self.pending_file('fafreplay')
@@ -113,14 +119,9 @@ class ReplayFile:
         with open(infofile, 'r') as ifile, open(screplay, 'rb') as sc, open(fafreplay, 'wb') as faf:
             info = ifile.read()
             faf.write((info + "\n").encode('utf-8'))
-            replaydata = zlib.compress(sc.read())
-            if legacy:
-                #  legacy format uses base64 encoded zipstream with 4 bytes (big endian) data length header
-                replaysize = os.fstat(sc.fileno()).st_size
-                replaydata = pack('>I', replaysize) + replaydata
-                faf.write(base64.b64encode(replaydata))
-            else:
-                faf.write(replaydata)
+            replaysize = os.fstat(sc.fileno()).st_size
+            replaydata = pack('>I', replaysize) + zlib.compress(sc.read())
+            faf.write(base64.b64encode(replaydata))
 
     def create_zipreplay(self):
         infofile = self.pending_file('json')
@@ -128,11 +129,9 @@ class ReplayFile:
         fafreplay = self.pending_file('fafreplay')
 
         with zipfile.ZipFile(fafreplay, 'w') as z_file:
-            z_file.write(infofile,
-                         os.path.basename(infofile))
-            z_file.write(screplay,
-                         os.path.basename(screplay))
+            z_file.write(infofile, os.path.basename(infofile))
+            z_file.write(screplay, os.path.basename(screplay))
 
-    async def create_zipreplay_thread(self):
+    async def create_zipreplay_async(self):
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self.create_zipreplay)
