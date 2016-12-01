@@ -1,3 +1,4 @@
+import time
 import asyncio
 import logging
 
@@ -30,11 +31,19 @@ class ReplayStream:
         self.steps = []  # All steps
         self.step = 0  # Beat id
 
-        self.game_ended = False
+        self.complete = False
+        self.started_at = time.time()
+        self.ended_at = None
         self.desynced = False
 
         self.streamers = set()
         self.peers = set()
+
+        self._debug_streamer = None
+
+    @property
+    def info(self):
+        return dict(started_at=self.started_at, ended_at=self.ended_at, complete=self.complete, desynced=self.desynced, featured_mod='faf', ticks=self.step, uid=self.game_id)
 
     @property
     def map(self):
@@ -66,7 +75,7 @@ class ReplayStream:
 
             while True:
                 to_step = self.step
-                if to_step > 1 and not self.game_ended and isinstance(to_peer, ReplayPeer):
+                if to_step > 1 and not self.complete and isinstance(to_peer, ReplayPeer):
                     to_step -= LIVE_DELAY
 
                 for step_id in range(to_peer.sent_step, to_step):
@@ -75,7 +84,7 @@ class ReplayStream:
                     # log.debug('Step-data: %s', step.to_bytes())
                     to_peer.send(step.to_bytes())
 
-                if self.game_ended:
+                if self.complete:
                     to_peer.finish()
                     break
 
@@ -127,9 +136,11 @@ class ReplayStream:
                 log.debug('%s: current step = %d', self, self.step)
 
         if step.game_ender:
-            self.game_ended = True
+            self.complete = True
+            self.ended_at = time.time()
 
             log.info('%s: stream finished. [%d peers]', self, len(self.peers))
 
     def end(self):
-        self.game_ended = True
+        if not self.ended_at:
+            self.ended_at = time.time()

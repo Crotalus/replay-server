@@ -59,7 +59,7 @@ class ReplayFilePeer:
         asyncio.ensure_future(self.persist_replay(), loop=loop)
 
     def get_streaminfo(self):
-        return dict(complete=self.stream.game_ended, desynced=self.stream.desynced, featured_mod='faf', ticks=self.stream.step, uid=self.game_id)
+        return self.stream.info
 
     def save_infofile(self, info):
         with open(self.info_path, 'w') as file:
