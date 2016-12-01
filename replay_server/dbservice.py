@@ -68,4 +68,4 @@ class DBService:
         log.debug("Insert replay %d into database", replay.id)
         async with await self.connection as conn:
             cursor = await conn.cursor()
-            await cursor.execute("INSERT INTO game_replays (uid, ticks, complete, desynced) VALUES ('%s', '%s', '%s', '%s')", (replay.info['uid'], replay.info['ticks'], replay.info['complete'], replay.info['desynced']))
+            await cursor.execute("INSERT INTO game_replays (uid, ticks, complete, desynced, max_watchers) VALUES ('%s', '%s', '%s', '%s', '%s')", (replay.info['uid'], replay.info['ticks'], replay.info['complete'], replay.info['desynced'], replay.info['max_watchers']))
