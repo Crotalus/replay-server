@@ -13,6 +13,8 @@ log = logging.getLogger(__name__)
 
 
 class ReplayFile:
+    id = None
+    info = None
 
     def __init__(self, file, info=None):
         self.id = int(os.path.splitext(os.path.basename(file))[0])
@@ -36,7 +38,7 @@ class ReplayFile:
         dirname = path
         while i > 1:
             dirname = os.path.join(dirname, str(
-                (self.id // (dirsize ** (i - 1))) % dirsize))
+                (self.id // (dirsize ** (i - 1))) % dirsize)).replace('\\', '/')
             i = i - 1
 
         if not os.path.exists(dirname):
@@ -45,7 +47,7 @@ class ReplayFile:
         return dirname
 
     def _build_path(self, path, ext):
-        return os.path.join(path, '{0}.{1}'.format(self.id, ext))
+        return os.path.join(path, '{0}.{1}'.format(self.id, ext)).replace('\\', '/')
 
     def pending_file(self, ext='fafreplay'):
         return self._build_path(config.PENDING_FOLDER, ext)

@@ -8,8 +8,8 @@ log = logging.getLogger(__name__)
 
 
 class DBService:
-    def __init__(self):
-        self.pool = None
+    def __init__(self, pool: aiomysql.Pool):
+        self.pool = pool
 
     async def get_pool(self):
         if not self.pool:
